@@ -1,6 +1,6 @@
 # TickForge
 
-TickForge is a small installable terminal timer with an RPG-styled interactive menu, quick countdowns, a stopwatch, and Pomodoro sessions.
+Tiny RPG-ish terminal timer.
 
 ## Install
 
@@ -9,17 +9,13 @@ cd ~/devz/tickforge
 python -m pip install -e .
 ```
 
-## Use the menu
-
-Run TickForge without arguments to open the timer menu:
+## Use
 
 ```bash
 tickforge
 ```
 
-Pick a preset quest or choose a custom duration like `10s`, `5m`, or `1h30m`. The menu uses ANSI color and pixel-style terminal art when your terminal supports it.
-
-## Quick commands
+Pick a preset or enter a custom time like `10s`, `5m`, or `1h30m`.
 
 ```bash
 tickforge 10s
@@ -30,6 +26,6 @@ tickforge pomodoro --work 25m --break-time 5m --cycles 4
 
 ## Controls
 
-- Press `Ctrl+C` once to stop the active timer cleanly.
-- Pass `--quiet` to skip the terminal bell when a timer finishes.
-- TickForge sends a desktop notification when a timer finishes if your system supports terminal-triggered notifications.
+- `Ctrl+C` stops the timer.
+- `--quiet` disables the bell.
+- Desktop notifications are sent when supported.

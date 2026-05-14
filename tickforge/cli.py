@@ -201,11 +201,11 @@ def prompt(text: str) -> str:
 
 def prompt_choice() -> str:
     presets = [
-        ("1", "10 seconds", "10s"),
-        ("2", "1 minute", "1m"),
-        ("3", "5 minutes", "5m"),
-        ("4", "10 minutes", "10m"),
-        ("5", "25 minutes", "25m"),
+        ("1", "6 minutes", "6m"),
+        ("2", "15 minutes", "15m"),
+        ("3", "1 hour", "1h"),
+        ("4", "1.5 hours", "1h30m"),
+        ("5", "3 hours", "3h"),
         ("6", "Custom", ""),
     ]
 
