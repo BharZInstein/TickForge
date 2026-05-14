@@ -1,6 +1,6 @@
 # TickForge
 
-TickForge is a small installable terminal timer with an interactive menu, quick countdowns, a stopwatch, and Pomodoro sessions.
+TickForge is a small installable terminal timer with an RPG-styled interactive menu, quick countdowns, a stopwatch, and Pomodoro sessions.
 
 ## Install
 
@@ -17,7 +17,7 @@ Run TickForge without arguments to open the timer menu:
 tickforge
 ```
 
-Pick a preset or choose a custom duration like `10s`, `5m`, or `1h30m`.
+Pick a preset quest or choose a custom duration like `10s`, `5m`, or `1h30m`. The menu uses ANSI color and pixel-style terminal art when your terminal supports it.
 
 ## Quick commands
 

@@ -11,6 +11,26 @@ from dataclasses import dataclass
 
 
 SPAN_PATTERN = re.compile(r"(?P<value>\d+)(?P<unit>[hms]?)", re.IGNORECASE)
+PIXEL_HOURGLASS = [
+    "   ▄████▄   ",
+    "  █▀    ▀█  ",
+    "   █▄  ▄█   ",
+    "    ▀██▀    ",
+    "    ▄██▄    ",
+    "   █▀  ▀█   ",
+    "  █▄    ▄█  ",
+    "   ▀████▀   ",
+]
+RESET = "\033[0m"
+COLORS = {
+    "amber": "\033[38;5;214m",
+    "cyan": "\033[38;5;81m",
+    "green": "\033[38;5;120m",
+    "magenta": "\033[38;5;207m",
+    "muted": "\033[38;5;244m",
+    "red": "\033[38;5;203m",
+    "white": "\033[38;5;255m",
+}
 
 
 @dataclass(frozen=True)
@@ -49,8 +69,45 @@ def format_time(seconds: int) -> str:
     return f"{minutes:02d}:{secs:02d}"
 
 
-def render(status: str, seconds: int) -> None:
-    sys.stdout.write(f"\r{status} {format_time(seconds)}")
+def supports_color() -> bool:
+    return sys.stdout.isatty() and "NO_COLOR" not in os.environ
+
+
+def paint(text: str, color: str) -> str:
+    if not supports_color():
+        return text
+    return f"{COLORS[color]}{text}{RESET}"
+
+
+def visible_width(text: str) -> int:
+    return len(re.sub(r"\033\[[0-9;]*m", "", text))
+
+
+def boxed(lines: list[str], title: str = "") -> str:
+    width = max([visible_width(line) for line in lines] + [len(title)])
+    top = f"╔═ {title} {'═' * max(0, width - len(title) - 1)}╗" if title else f"╔{'═' * (width + 2)}╗"
+    body = [f"║ {line}{' ' * (width - visible_width(line))} ║" for line in lines]
+    bottom = f"╚{'═' * (width + 2)}╝"
+    return "\n".join([top, *body, bottom])
+
+
+def progress_bar(remaining: int, total: int, width: int = 24) -> str:
+    elapsed = max(0, total - remaining)
+    filled = min(width, round((elapsed / total) * width)) if total else width
+    return f"[{'█' * filled}{'░' * (width - filled)}]"
+
+
+def render(status: str, seconds: int, total: int | None = None) -> None:
+    if total is None or not sys.stdout.isatty():
+        sys.stdout.write(f"\r{status} {format_time(seconds)}")
+        sys.stdout.flush()
+        return
+
+    line = (
+        f"\r{paint('⚔', 'amber')} {paint(status, 'cyan')} "
+        f"{paint(format_time(seconds), 'white')} {paint(progress_bar(seconds, total), 'green')}"
+    )
+    sys.stdout.write(f"{line}\033[K")
     sys.stdout.flush()
 
 
@@ -82,7 +139,8 @@ def notify(title: str, message: str) -> None:
 def finish(label: str, quiet: bool) -> None:
     notify("TickForge", f"{label} is done.")
     sound = "" if quiet else "\a"
-    sys.stdout.write(f"\r{label} done.{' ' * 16}{sound}\n")
+    message = f"✦ {label} complete. Quest reward claimed. ✦"
+    sys.stdout.write(f"\r{paint(message, 'green')}{' ' * 16}{sound}\n")
     sys.stdout.flush()
 
 
@@ -93,10 +151,10 @@ def run_countdown(config: TimerConfig) -> int:
             remaining = round(end_at - time.monotonic())
             if remaining <= 0:
                 break
-            render(config.label, remaining)
+            render(config.label, remaining, config.seconds)
             time.sleep(min(1, remaining))
     except KeyboardInterrupt:
-        sys.stdout.write("\nStopped.\n")
+        sys.stdout.write(f"\n{paint('Quest abandoned.', 'red')}\n")
         return 130
 
     finish(config.label, config.quiet)
@@ -112,7 +170,7 @@ def run_stopwatch(label: str) -> int:
             time.sleep(1)
     except KeyboardInterrupt:
         elapsed = round(time.monotonic() - started_at)
-        sys.stdout.write(f"\nStopped at {format_time(elapsed)}.\n")
+        sys.stdout.write(f"\n{paint('Stopped at', 'amber')} {format_time(elapsed)}.\n")
         return 0
 
 
@@ -132,7 +190,13 @@ def run_pomodoro(work: int, break_time: int, cycles: int, quiet: bool) -> int:
 
 
 def clear_screen() -> None:
-    os.system("cls" if os.name == "nt" else "clear")
+    if sys.stdout.isatty():
+        sys.stdout.write("\033[2J\033[H")
+        sys.stdout.flush()
+
+
+def prompt(text: str) -> str:
+    return input(paint(text, "amber"))
 
 
 def prompt_choice() -> str:
@@ -145,18 +209,22 @@ def prompt_choice() -> str:
         ("6", "Custom", ""),
     ]
 
+    art = [paint(line, "magenta") for line in PIXEL_HOURGLASS]
+    menu = [f"{paint(key + ')', 'amber')} {label}" for key, label, _duration in presets]
+
     clear_screen()
-    sys.stdout.write("TickForge\n")
-    sys.stdout.write("---------\n")
-    for key, label, _duration in presets:
-        sys.stdout.write(f"{key}) {label}\n")
-    sys.stdout.write("\nChoose a timer: ")
+    sys.stdout.write(boxed(art, "TickForge Timer Guild"))
+    sys.stdout.write("\n\n")
+    sys.stdout.write(boxed(menu, "Choose Your Quest"))
+    sys.stdout.write("\n\n")
+    sys.stdout.write(paint("Tip: custom accepts 10s, 5m, 1h30m.\n\n", "muted"))
+    sys.stdout.write(paint("Choose a timer: ", "amber"))
     sys.stdout.flush()
 
     selected = input().strip()
     for key, _label, duration in presets:
         if selected == key:
-            return input("Enter duration (e.g. 90s, 5m, 1h30m): ").strip() if not duration else duration
+            return prompt("Enter duration (e.g. 90s, 5m, 1h30m): ").strip() if not duration else duration
     raise ValueError("unknown menu choice")
 
 
@@ -165,13 +233,13 @@ def run_menu() -> int:
         try:
             duration = prompt_choice()
             seconds = parse_span(duration)
-            label = input("Label [Timer]: ").strip() or "Timer"
-            quiet_answer = input("Ring bell when done? [Y/n]: ").strip().lower()
+            label = prompt("Quest name [Timer]: ").strip() or "Timer"
+            quiet_answer = prompt("Ring bell when done? [Y/n]: ").strip().lower()
             quiet = quiet_answer in {"n", "no"}
             sys.stdout.write("\n")
             return run_countdown(TimerConfig(seconds, label, quiet))
         except (argparse.ArgumentTypeError, ValueError) as error:
-            sys.stdout.write(f"\n{error}\nPress Enter to try again, or Ctrl+C to quit.")
+            sys.stdout.write(f"\n{paint(str(error), 'red')}\nPress Enter to try again, or Ctrl+C to quit.")
             sys.stdout.flush()
             try:
                 input()
@@ -219,8 +287,8 @@ def print_overview() -> None:
     sys.stdout.write(
         "usage: tickforge\n"
         "       tickforge <duration> [--label LABEL] [--quiet]\n"
-       "       tickforge stopwatch [--label LABEL]\n"
-       "       tickforge pomodoro [--work DURATION] [--break-time DURATION] [--cycles N] [--quiet]\n\n"
+        "       tickforge stopwatch [--label LABEL]\n"
+        "       tickforge pomodoro [--work DURATION] [--break-time DURATION] [--cycles N] [--quiet]\n\n"
         "Terminal countdown, stopwatch, and Pomodoro timer.\n\n"
         "examples:\n"
         "  tickforge\n"
