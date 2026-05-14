@@ -32,3 +32,4 @@ tickforge pomodoro --work 25m --break-time 5m --cycles 4
 
 - Press `Ctrl+C` once to stop the active timer cleanly.
 - Pass `--quiet` to skip the terminal bell when a timer finishes.
+- TickForge sends a desktop notification when a timer finishes if your system supports terminal-triggered notifications.

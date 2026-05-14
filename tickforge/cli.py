@@ -3,6 +3,8 @@ from __future__ import annotations
 import argparse
 import os
 import re
+import shutil
+import subprocess
 import sys
 import time
 from dataclasses import dataclass
@@ -52,7 +54,33 @@ def render(status: str, seconds: int) -> None:
     sys.stdout.flush()
 
 
+def notify(title: str, message: str) -> None:
+    if sys.platform.startswith("linux") and shutil.which("notify-send"):
+        subprocess.run(["notify-send", title, message], check=False, stderr=subprocess.DEVNULL)
+        return
+    if sys.platform == "darwin" and shutil.which("osascript"):
+        safe_title = title.replace("\\", "\\\\").replace('"', '\\"')
+        safe_message = message.replace("\\", "\\\\").replace('"', '\\"')
+        script = f'display notification "{safe_message}" with title "{safe_title}"'
+        subprocess.run(["osascript", "-e", script], check=False, stderr=subprocess.DEVNULL)
+        return
+    if sys.platform == "win32" and shutil.which("powershell"):
+        safe_title = title.replace("'", "''")
+        safe_message = message.replace("'", "''")
+        script = (
+            "[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] > $null;"
+            "$template = [Windows.UI.Notifications.ToastTemplateType]::ToastText02;"
+            "$xml = [Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent($template);"
+            f"$xml.GetElementsByTagName('text')[0].AppendChild($xml.CreateTextNode('{safe_title}')) > $null;"
+            f"$xml.GetElementsByTagName('text')[1].AppendChild($xml.CreateTextNode('{safe_message}')) > $null;"
+            "$toast = [Windows.UI.Notifications.ToastNotification]::new($xml);"
+            "[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('TickForge').Show($toast);"
+        )
+        subprocess.run(["powershell", "-NoProfile", "-Command", script], check=False, stderr=subprocess.DEVNULL)
+
+
 def finish(label: str, quiet: bool) -> None:
+    notify("TickForge", f"{label} is done.")
     sound = "" if quiet else "\a"
     sys.stdout.write(f"\r{label} done.{' ' * 16}{sound}\n")
     sys.stdout.flush()
