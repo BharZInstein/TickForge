@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tickforge"
+version = "0.1.0"
+description = "A focused terminal timer with countdown, stopwatch, and Pomodoro modes."
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [{ name = "bharz76" }]
+license = { text = "MIT" }
+dependencies = []
+
+[project.scripts]
+tickforge = "tickforge.cli:main"
+
